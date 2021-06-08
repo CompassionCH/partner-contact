@@ -50,8 +50,8 @@ class MailTrackingEmail(models.Model):
         msg = event.get("msg", {})
         metadata = msg.get("metadata", {})
         tracking_email_id = metadata.get("tracking_email_id", False)
-        if tracking_email_id and tracking_email_id.isdigit():
-            tracking = self.search([("id", "=", tracking_email_id)], limit=1)
+        if tracking_email_id and isinstance(tracking_email_id, int):
+            tracking = self.browse(tracking_email_id)
         return tracking
 
     def _mandrill_metadata(self, event, metadata):
@@ -69,17 +69,21 @@ class MailTrackingEmail(models.Model):
 
         ip = event.get("ip", False)
         url = event.get("url", False)
+        reject = msg.get("reject", {})
 
         metadata.update({
             "timestamp": ts,
             "time": time.strftime("%Y-%m-%d %H:%M:%S") if ts else False,
             "date": time.strftime("%Y-%m-%d") if ts else False,
-            "recipient": msg.get("email", False),
-            "sender": msg.get("sender", False),
-            "name": msg.get("subject", False),
+            "recipient": msg.get("email"),
+            "sender": msg.get("sender"),
+            "name": msg.get("subject"),
             "tags": ", ".join(tags) if tags else False,
             "ip": ip,
-            "url": url
+            "url": url,
+            "error_smtp_server": msg.get("diag"),
+            "error_type": reject.get("reason"),
+            "bounce_description": msg.get("bounce_description"),
         })
         return metadata
 
