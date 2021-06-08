@@ -10,6 +10,7 @@ from odoo.addons.mail_tracking.controllers.main import MailTrackingController
 import hmac
 import base64
 from hashlib import sha1
+import json
 
 _logger = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ class MandrillTrackingController(MailTrackingController):
             _logger.info('Validation error, ignoring this request')
             return 'NO_AUTH'
         try:
+            kwargs["mandrill_events"] = json.loads(kwargs.get("mandrill_events", "[]"))
             self.mail_tracking_event(db, **kwargs)
             return "OK"
         except Exception as e:
