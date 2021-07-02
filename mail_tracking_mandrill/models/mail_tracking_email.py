@@ -69,7 +69,8 @@ class MailTrackingEmail(models.Model):
 
         ip = event.get("ip", False)
         url = event.get("url", False)
-        reject = msg.get("reject", {})
+        # reject can be None
+        reject = msg.get("reject", {}) or {}
 
         metadata.update({
             "timestamp": ts,
@@ -82,7 +83,7 @@ class MailTrackingEmail(models.Model):
             "ip": ip,
             "url": url,
             "error_smtp_server": msg.get("diag"),
-            "error_type": reject.get("reason"),
+            "error_type": reject.get("reason") or "",
             "bounce_description": msg.get("bounce_description"),
         })
         return metadata
