@@ -87,7 +87,7 @@ class ResPartnerCategory(models.Model):
             if partners:
                 tagger.write({'partner_ids': [(6, 0, partners.ids)]})
             else:
-                tagger.write({'partner_ids': False})
+                tagger.write({'partner_ids': [(5, 0, 0)]})
         return True
 
     def get_partners_from_ir_filter(self):
