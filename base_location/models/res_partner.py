@@ -83,7 +83,7 @@ class ResPartner(models.Model):
                 raise ValidationError(_(
                     "The country of the partner %s differs from that in "
                     "location %s") % (rec.name, rec.zip_id.name))
-            if rec.zip_id.city_id != rec.city_id:
+            if rec.city_id and rec.zip_id.city_id != rec.city_id:
                 raise ValidationError(_(
                     "The city of partner %s differs from that in "
                     "location %s") % (rec.name, rec.zip_id.name))
@@ -100,3 +100,7 @@ class ResPartner(models.Model):
                 'city': False,
             })
         self.update(vals)
+
+    @api.model
+    def _address_fields(self):
+        return super()._address_fields() + ["zip_id", "city_id"]
