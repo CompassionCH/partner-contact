@@ -3,7 +3,7 @@
 {
     "name": "Smart Tagger",
     "summary": "Smart tagger, module to have smart tags who " "update themselves alone",
-    "version": "14.0.1.0.0",
+    "version": "16.0.1.0.0",
     "category": "Other",
     "author": "Compassion CH, Odoo Community Association (OCA)",
     "license": "AGPL-3",
