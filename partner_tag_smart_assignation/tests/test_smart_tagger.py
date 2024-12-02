@@ -13,30 +13,56 @@ class TestSmartTagger(TransactionCase):
         """Load test data."""
         super().setUpClass()
 
-        michel_fletcher = cls.browse_ref(cls, "base.res_partner_address_4")
-        chao_wang = cls.browse_ref(cls, "base.res_partner_address_5")
-        david_simpson = cls.browse_ref(cls, "base.res_partner_address_10")
-        john_m_brown = cls.browse_ref(cls, "base.res_partner_address_11")
-        charlie_bernard = cls.browse_ref(cls, "base.res_partner_address_13")
+        # Create new partner records for testing
+        cls.michel_fletcher = cls.env["res.partner"].create({
+            "name": "Michel Fletcher",
+            "email": "michel.fletcher@example.com",
+            "is_company": False,
+        })
+        cls.chao_wang = cls.env["res.partner"].create({
+            "name": "Chao Wang",
+            "email": "chao.wang@example.com",
+            "is_company": False,
+        })
+        cls.david_simpson = cls.env["res.partner"].create({
+            "name": "David Simpson",
+            "email": "david.simpson@example.com",
+            "is_company": False,
+        })
+        cls.john_m_brown = cls.env["res.partner"].create({
+            "name": "John M. Brown",
+            "email": "john.brown@example.com",
+            "is_company": False,
+        })
+        cls.charlie_bernard = cls.env["res.partner"].create({
+            "name": "Charlie Bernard",
+            "email": "charlie.bernard@example.com",
+            "is_company": False,
+        })
 
+        # Combine all created partners into a single recordset
         cls.partners = (
-            michel_fletcher + chao_wang + david_simpson + john_m_brown + charlie_bernard
+            cls.michel_fletcher |
+            cls.chao_wang |
+            cls.david_simpson |
+            cls.john_m_brown |
+            cls.charlie_bernard
         )
-        cls.michel_fletcher = michel_fletcher
 
     def create_condition(self):
         """
-        create a condition, which filters all objects containing the letter 'o'
+        Create a condition, which filters all objects containing the letter 'o'
         in their name.
         """
+        model_res_partner = self.env.ref('base.model_res_partner')
         return self.env["ir.filters"].create(
             {
                 "user_id": False,
-                "model_id": "res.partner",
+                "model_id": model_res_partner.id,
                 "active": True,
-                "domain": '[["name","ilike","o"]]',
-                "context": "{}",
-                "sort": "[]",
+                "domain": [["name", "ilike", "o"]],
+                "context": {},
+                "sort": [],
                 "name": "SmartTagTestCondition",
                 "is_default": False,
                 "action_id": False,
@@ -45,7 +71,7 @@ class TestSmartTagger(TransactionCase):
 
     def create_tag(self):
         """
-        create a smart tag, which tags all partners containing the letter 'o'
+        Create a smart tag, which tags all partners containing the letter 'o'
         in their name.
         """
         return self.env["res.partner.category"].create(
@@ -68,14 +94,17 @@ class TestSmartTagger(TransactionCase):
         Tag all partners which have the letter 'o' in the name.
         """
         smart_tag = self.create_tag()
-        for partner in self.partners.filtered(lambda t: "o" in t.name):
-            self.assertTrue(partner in smart_tag.partner_ids)
+        for partner in self.partners.filtered(lambda t: "o" in t.name.lower()):
+            self.assertTrue(partner in smart_tag.partner_ids,
+                            f"Partner {partner.name} should be tagged.")
 
-        for partner in self.partners.filtered(lambda t: "o" not in t.name):
-            self.assertFalse(partner in smart_tag.partner_ids)
+        for partner in self.partners.filtered(lambda t: "o" not in t.name.lower()):
+            self.assertFalse(partner in smart_tag.partner_ids,
+                             f"Partner {partner.name} should not be tagged.")
 
         for partner in smart_tag.partner_ids:
-            self.assertIn("o", partner.name)
+            self.assertIn("o", partner.name.lower(),
+                          f"Tagged partner {partner.name} does not contain 'o'.")
 
     def test_modify_partner(self):
         """
@@ -85,18 +114,20 @@ class TestSmartTagger(TransactionCase):
 
         smart_tag = self.create_tag()
 
-        # update some first names
+        # Update some first names
         michael = self.michel_fletcher
         michael.update({"name": "Michel Angelo"})
 
         # Simulate a cron trigger
         self.env["res.partner.category"].update_all_smart_tags()
 
-        # verify that the updated tag contains the partner 'Michel Angelo'
-        self.assertTrue(michael in smart_tag.partner_ids)
+        # Verify that the updated tag contains the partner 'Michel Angelo'
+        self.assertTrue(michael in smart_tag.partner_ids,
+                        "Michel Angelo should be tagged after name update.")
 
         for partner in smart_tag.partner_ids:
-            self.assertIn("o", partner.name)
+            self.assertIn("o", partner.name.lower(),
+                          f"Tagged partner {partner.name} does not contain 'o'.")
 
     def test_smart_tag_sql(self):
         """Test query SQL for smart tags"""
@@ -109,46 +140,49 @@ class TestSmartTagger(TransactionCase):
                 "tag_filter_sql_query": """
                 SELECT id
                 FROM res_partner
-                Where name like '%o%'
-            """,
+                WHERE LOWER(name) LIKE '%%o%%'
+                """,
             }
         )
-        # update some first names
+        # Update some first names
         michael = self.michel_fletcher
         michael.write({"name": "Michel Angelo"})
 
         # Trigger tag update
         smart_tag.update_partner_tags()
 
-        # verify that the updated tag contains the partner 'Michel Angelo'
-        self.assertTrue(michael in smart_tag.partner_ids)
+        # Verify that the updated tag contains the partner 'Michel Angelo'
+        self.assertTrue(michael in smart_tag.partner_ids,
+                        "Michel Angelo should be tagged after SQL update.")
 
         for partner in smart_tag.partner_ids:
-            self.assertTrue("o" in partner.name)
+            self.assertTrue("o" in partner.name.lower(),
+                            f"Tagged partner {partner.name} does not contain 'o'.")
 
     def test_check_validity_dates(self):
         """
         Test if the valid_until functionality works correctly
         """
         # Create a new tag with a 'valid_until' date set to yesterday
-        yesterday = fields.Date.to_string(fields.Date.today() - timedelta(days=1))
+        yesterday = fields.Date.today() - timedelta(days=1)
 
         expired_tag = self.create_tag()
-        expired_tag.update({"valid_until": yesterday})
+        expired_tag.write({"valid_until": yesterday})
         expired_tag.update_partner_tags()
 
         # Reload the tags from the database
         expired_tag.invalidate_recordset()
 
         # Check that the expired tag is now inactive
-        self.assertFalse(expired_tag.active)
-        # Check that the partner aren't tagged
-        self.assertFalse(self.david_simpson in expired_tag.partner_ids)
+        self.assertFalse(expired_tag.active, "Expired tag should be inactive.")
+        # Check that the partner isn't tagged
+        self.assertFalse(self.david_simpson in expired_tag.partner_ids,
+                         "David Simpson should not be tagged by an expired tag.")
 
         # Modify the tag with a 'valid_until' date set to tomorrow
-        tomorrow = fields.Date.to_string(fields.Date.today() + timedelta(days=1))
+        tomorrow = fields.Date.today() + timedelta(days=1)
         active_tag = expired_tag
-        active_tag.update({"valid_until": tomorrow, "active": True})
+        active_tag.write({"valid_until": tomorrow, "active": True})
 
         # Run the method which is supposed to deactivate expired tags
         self.env["res.partner.category"]._check_validity_dates()
@@ -157,4 +191,4 @@ class TestSmartTagger(TransactionCase):
         active_tag.invalidate_recordset()
 
         # Check that the active tag is still active
-        self.assertTrue(active_tag.active)
+        self.assertTrue(active_tag.active, "Active tag should remain active.")
