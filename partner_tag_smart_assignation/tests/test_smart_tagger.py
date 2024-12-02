@@ -2,12 +2,12 @@ import logging
 from datetime import timedelta
 
 from odoo import fields
-from odoo.tests.common import SavepointCase
+from odoo.tests.common import TransactionCase
 
 logger = logging.getLogger(__name__)
 
 
-class TestSmartTagger(SavepointCase):
+class TestSmartTagger(TransactionCase):
     @classmethod
     def setUpClass(cls):
         """Load test data."""
@@ -130,7 +130,6 @@ class TestSmartTagger(SavepointCase):
         """
         Test if the valid_until functionality works correctly
         """
-
         # Create a new tag with a 'valid_until' date set to yesterday
         yesterday = fields.Date.to_string(fields.Date.today() - timedelta(days=1))
 
@@ -139,7 +138,7 @@ class TestSmartTagger(SavepointCase):
         expired_tag.update_partner_tags()
 
         # Reload the tags from the database
-        expired_tag.invalidate_cache()
+        expired_tag.invalidate_recordset()
 
         # Check that the expired tag is now inactive
         self.assertFalse(expired_tag.active)
@@ -154,8 +153,8 @@ class TestSmartTagger(SavepointCase):
         # Run the method which is supposed to deactivate expired tags
         self.env["res.partner.category"]._check_validity_dates()
 
-        # Reload the tags from the database
-        active_tag.invalidate_cache()
+        # Invalidate cache for the specific record
+        active_tag.invalidate_recordset()
 
         # Check that the active tag is still active
         self.assertTrue(active_tag.active)
