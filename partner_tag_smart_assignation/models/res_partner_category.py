@@ -50,11 +50,11 @@ class ResPartnerCategory(models.Model):
     description = fields.Text()
     valid_until = fields.Date()
 
-    @api.model
-    def create(self, vals):
-        record = super().create(vals)
-        record.update_partner_tags()
-        return record
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records.update_partner_tags()
+        return records
 
     def write(self, vals):
         res = super().write(vals)
