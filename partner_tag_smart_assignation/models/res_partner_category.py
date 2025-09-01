@@ -41,7 +41,7 @@ class ResPartnerCategory(models.Model):
         "partner_id",
     )
 
-    tagged_partner_count = fields.Integer(compute="_compute_number_tags", stored=True)
+    tagged_partner_count = fields.Integer(compute="_compute_number_tags", store=True)
 
     author_id = fields.Many2one(
         "res.users", string="Author", default=lambda x: x.env.user
