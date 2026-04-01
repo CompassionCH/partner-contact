@@ -70,8 +70,6 @@ class ResPartnerCategory(models.Model):
 
     @api.constrains(
         "tag_filter_condition_id",
-        "tag_filter_condition_id.model_id",
-        "tag_filter_condition_id.domain",
         "tag_filter_partner_field",
     )
     def check_condition(self):
